@@ -71,7 +71,11 @@ probe_tcc_plugin(PurplePlugin *plugin)
 		search_paths = g_list_next(search_paths);
 
 		uselib = g_strdup_printf("%s%stcc%spurple-2", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		g_mkdir_with_parents(uselib, 0700);
 		tcc_add_include_path(state, uselib);
+		g_free(uselib);
+		uselib = g_strdup_printf("%s%stcc%spurple-2%sinternal.h", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		g_file_set_contents(uselib, "", 0, NULL);
 		g_free(uselib);
 		
 #ifdef _WIN32
@@ -96,6 +100,24 @@ probe_tcc_plugin(PurplePlugin *plugin)
 		tcc_add_sysinclude_path(state, uselib);
 		g_free(uselib);
 	}
+
+#ifndef _WIN32
+	tcc_add_include_path(state, "/usr/include/libpurple");
+	tcc_add_sysinclude_path(state, "/usr/include/glib-2.0");
+	
+	{
+		gchar *libdir;
+		if (g_spawn_command_line_sync("pkg-config glib-2.0 --variable=libdir", &libdir, NULL, NULL, NULL) && libdir && *libdir) {
+			gchar *uselib = g_strdup_printf("%s%sglib-2.0%sinclude", g_strstrip(libdir), G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+			tcc_add_sysinclude_path(state, uselib);
+			g_free(uselib);
+			g_free(libdir);
+		}
+	}
+	
+	tcc_add_sysinclude_path(state, "/usr/lib/tcc/include");
+	tcc_add_sysinclude_path(state, "/usr/include");
+#endif
 	
 #ifdef _WIN32
 	tcc_add_library_path(state, wpurple_install_dir());
@@ -103,6 +125,8 @@ probe_tcc_plugin(PurplePlugin *plugin)
 #endif
 	
 	tcc_add_library(state, "purple");
+	
+	tcc_define_symbol(state, "_(a)", "(a)");
 	
 #ifdef TCC_FILETYPE_C
 	if(tcc_add_file(state, plugin->path, TCC_FILETYPE_C) == -1) {
