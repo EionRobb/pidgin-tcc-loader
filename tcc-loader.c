@@ -104,7 +104,11 @@ probe_tcc_plugin(PurplePlugin *plugin)
 	
 	tcc_add_library(state, "purple");
 	
+#ifdef TCC_FILETYPE_C
+	if(tcc_add_file(state, plugin->path, TCC_FILETYPE_C) == -1) {
+#else
 	if(tcc_add_file(state, plugin->path) == -1) {
+#endif
 		purple_debug_error("tcc", "couldn't load file %s\n", plugin->path);
 		
 		tcc_delete(state);
