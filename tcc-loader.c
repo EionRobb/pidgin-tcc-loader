@@ -1,7 +1,7 @@
 /*
- * purple
+ * purple-tcc-loader
  *
- * Copyright (C) 2003 Christian Hammond <chipx86@gnupdate.org>
+ * Copyright (C) 2016 Eion Robb <eionrobb@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,11 +46,23 @@ probe_tcc_plugin(PurplePlugin *plugin)
 	gpointer memneeded = NULL;
 	int memsize = -1;
 	gboolean status;
+	GList *search_paths = purple_plugins_get_search_paths();
 	
 	state = tcc_new();
 	
+	while (search_paths != NULL) {
+		gchar *uselib;
+		const gchar *search_path = search_paths->data;
+		search_paths = g_list_next(search_paths);
+
+		uselib = g_strdup_printf("%s%stcc",
+		                         search_path, G_DIR_SEPARATOR_S);
+		tcc_add_include_path(state, uselib);
+		g_free(uselib);
+	}
+	
 	if(tcc_add_file(state, plugin->path) == -1) {
-		purple_debug_error("tcc", "couldn't load file %s", plugin->path);
+		purple_debug_error("tcc", "couldn't load file %s\n", plugin->path);
 		
 		tcc_delete(state);
 		return FALSE;
@@ -58,14 +70,14 @@ probe_tcc_plugin(PurplePlugin *plugin)
 
 	/* copy code into memory */
 	if((memsize = tcc_relocate(state, NULL)) < 0) {
-		purple_debug_error("tcc", "couldn't work out how much memory is needed");
+		purple_debug_error("tcc", "couldn't work out how much memory is needed\n");
 
 		tcc_delete(state);
 		return FALSE;
 	}
 	memneeded = g_malloc0(memsize);
 	if(tcc_relocate(state, memneeded) < 0) {
-		purple_debug_error("tcc", "could not relocate plugin into memory");
+		purple_debug_error("tcc", "could not relocate plugin into memory\n");
 		
 		tcc_delete(state);
 		g_free(memneeded);
@@ -74,7 +86,7 @@ probe_tcc_plugin(PurplePlugin *plugin)
 	
 	tcc_purple_init_plugin = (TccPluginInitFunc) tcc_get_symbol(state, "purple_init_plugin");
 	if (tcc_purple_init_plugin == NULL) {
-		purple_debug_error("tcc", "no purple_init_plugin function found");
+		purple_debug_error("tcc", "no purple_init_plugin function found\n");
 		
 		tcc_delete(state);
 		g_free(memneeded);
