@@ -20,13 +20,21 @@
  
 #include <libtcc.h>
 
-#include "internal.h"
 #include "debug.h"
 #include "plugin.h"
 #include "signals.h"
 #include "version.h"
 
+#ifdef _WIN32
+#include "win32dep.h"
+#endif
+
 #define TCC_PLUGIN_ID "eionrobb-tcc-loader"
+#define DISPLAY_VERSION "whocares"
+
+#ifndef N_
+#define N_(a) (a)
+#endif
 
 
 typedef struct {
@@ -234,7 +242,7 @@ static PurplePluginInfo info =
 	N_("Provides support for loading C plugins."),    /**< summary        */
 	N_("Provides support for loading C plugins."),    /**< description    */
 	"Eion Robb <eionrobb@gmail.com>",                 /**< author         */
-	PURPLE_WEBSITE,                                   /**< homepage       */
+	"https://github.com/EionRobb/pidgin-tcc-loader",  /**< homepage       */
 
 	plugin_load,                                      /**< load           */
 	plugin_unload,                                    /**< unload         */
