@@ -36,6 +36,11 @@ typedef struct {
 
 typedef gboolean (*TccPluginInitFunc)(PurplePlugin *plugin);
 
+static void
+tcc_error_func(void *opaque, const char *msg)
+{
+	purple_debug_error("tcc_loader", "%s\n", msg);
+}
 
 static gboolean
 probe_tcc_plugin(PurplePlugin *plugin)
@@ -50,16 +55,46 @@ probe_tcc_plugin(PurplePlugin *plugin)
 	
 	state = tcc_new();
 	
+	tcc_set_error_func(state, NULL, tcc_error_func);
+	
 	while (search_paths != NULL) {
 		gchar *uselib;
 		const gchar *search_path = search_paths->data;
 		search_paths = g_list_next(search_paths);
 
-		uselib = g_strdup_printf("%s%stcc",
-		                         search_path, G_DIR_SEPARATOR_S);
+		uselib = g_strdup_printf("%s%stcc%spurple-2", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
 		tcc_add_include_path(state, uselib);
 		g_free(uselib);
+		
+#ifdef _WIN32
+		uselib = g_strdup_printf("%s%stcc%spurple-2%swin32", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		tcc_add_include_path(state, uselib);
+		g_free(uselib);
+		
+		uselib = g_strdup_printf("%s%stcc%stcc%swinapi", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		tcc_add_include_path(state, uselib);
+		g_free(uselib);
+#endif
+
+		uselib = g_strdup_printf("%s%stcc%stcc", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		tcc_add_sysinclude_path(state, uselib);
+		g_free(uselib);
+
+		uselib = g_strdup_printf("%s%stcc%sglib", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		tcc_add_sysinclude_path(state, uselib);
+		g_free(uselib);
+
+		uselib = g_strdup_printf("%s%stcc%sglib%sglib-2.0", search_path, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S, G_DIR_SEPARATOR_S);
+		tcc_add_sysinclude_path(state, uselib);
+		g_free(uselib);
 	}
+	
+#ifdef _WIN32
+	tcc_add_library_path(state, wpurple_install_dir());
+	tcc_add_library_path(state, "C:\\Windows\\System32\\");
+#endif
+	
+	tcc_add_library(state, "purple");
 	
 	if(tcc_add_file(state, plugin->path) == -1) {
 		purple_debug_error("tcc", "couldn't load file %s\n", plugin->path);
